@@ -5,3 +5,4 @@ langchain-openai
 langchain-qdrant
 qdrant-client
 python-dotenv
+pypdf
