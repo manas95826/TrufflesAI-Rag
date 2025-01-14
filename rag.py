@@ -48,7 +48,8 @@ def setup_qa_chain(vector_store):
     return RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
-        retriever=vector_store.as_retriever()
+        retriever=vector_store.as_retriever(),
+        return_source_documents=True
     )
 
 # Streamlit UI
@@ -66,22 +67,51 @@ if uploaded_file and st.session_state.vector_store is None:
 # Chat interface
 if st.session_state.vector_store is not None:
     # Display chat history
-    for q, a in st.session_state.chat_history:
+    for q, a, sources in st.session_state.chat_history:
         st.write("Question:", q)
         st.write("Answer:", a)
-        st.write("---")
+        
+        # Display historical sources in an expander
+        with st.expander("📚 View Sources", expanded=False):
+            st.markdown("---")
+            for i, doc in enumerate(sources, 1):
+                with st.container():
+                    st.markdown(f"**Source {i}** (Page {doc.metadata.get('page', 'Unknown')})")
+                    st.markdown("""
+                    ```text
+                    {}
+                    ```
+                    """.format(doc.page_content))
+            st.markdown("---")
 
     # Question input
     question = st.text_input("Ask a question about your PDF:")
     if st.button("Ask"):
         if question:
             with st.spinner('Finding answer...'):
-                answer = st.session_state.retrieval_qa({"query": question})['result']
-                st.session_state.chat_history.append((question, answer))
+                result = st.session_state.retrieval_qa({"query": question})
+                answer = result['result']
+                source_documents = result['source_documents']
                 
-                # Display the latest Q&A
+                # Store in chat history
+                st.session_state.chat_history.append((question, answer, source_documents))
+                
+                # Display the latest Q&A with sources in a cleaner format
                 st.write("Question:", question)
                 st.write("Answer:", answer)
+                
+                # Display sources in an expander
+                with st.expander("📚 View Sources", expanded=False):
+                    st.markdown("---")
+                    for i, doc in enumerate(source_documents, 1):
+                        with st.container():
+                            st.markdown(f"**Source {i}** (Page {doc.metadata.get('page', 'Unknown')})")
+                            st.markdown("""
+                            ```text
+                            {}
+                            ```
+                            """.format(doc.page_content))
+                    st.markdown("---")
 
     # Clear chat history button
     if st.button("Clear Chat History"):
