@@ -1,1 +1,1 @@
-# Truffles---AI-Rag
+# TrufflesAI-Rag
